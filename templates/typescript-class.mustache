@@ -9,6 +9,8 @@ type CallbackHandler = (err: any, res?: request.Response) => void;
 export type {{&name}} = {{#tsType}}{{> type}}{{/tsType}};
 {{/definitions}}
 
+type Logger = { log: (line: string) => any };
+
 /**
  * {{&description}}
  * @class {{&className}}
@@ -19,7 +21,7 @@ export default class {{&className}} {
     private domain: string = "{{&domain}}";
     private errorHandlers: CallbackHandler[] = [];
 
-    constructor(domain?: string) {
+    constructor(domain?: string, private logger?: Logger) {
         if(domain) {
             this.domain = domain;
         }
@@ -34,6 +36,10 @@ export default class {{&className}} {
     }
 
     private request(method: string, url: string, body: any, headers: any, queryParameters: any, form: any, reject: CallbackHandler, resolve: CallbackHandler, errorHandlers: CallbackHandler[]) {
+        if(this.logger) {
+          this.logger.log(`Call ${method} ${url}`);
+        }
+
         let req = (new (request as any).Request(method, url) as request.Request)
             .query(queryParameters);
         Object.keys(headers).forEach(key => {
@@ -43,7 +49,7 @@ export default class {{&className}} {
         if(body) {
             req.send(body);
         }
-
+        
         if(typeof(body) === 'object' && !(body.constructor.name === 'Buffer')) {
             req.set('Content-Type', 'application/json');
         }
@@ -56,7 +62,7 @@ export default class {{&className}} {
         req.end((error, response) => {
             if(error || !response.ok) {
                 reject(error);
-                errorHandlers.forEach(handler => handler(error));
+                this.errorHandlers.forEach(handler => handler(error));
             } else {
                 resolve(response);
             }
